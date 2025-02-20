@@ -3,17 +3,21 @@ use color_eyre::Result;
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Constraint, Layout, Position},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Style, Stylize},
     text::{Line, Span, Text},
-    widgets::{Block, List, ListItem, Paragraph},
+    widgets::{
+        Block, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
+    },
     DefaultTerminal, Frame,
 };
 
 pub struct Ui {
     input: String,
     input_mode: InputMode,
-    character_index: usize,
+    character_index: usize, // Cursor index in 1D input
     app: App,
+    scroll_offset_input: usize,
+    scroll_offset_messages: usize,
 }
 
 pub enum InputMode {
@@ -28,6 +32,8 @@ impl Ui {
             input_mode: InputMode::Normal,
             character_index: 0,
             app,
+            scroll_offset_input: 0,
+            scroll_offset_messages: 0,
         }
     }
 
@@ -47,7 +53,7 @@ impl Ui {
         self.move_cursor_right();
     }
 
-   fn byte_index(&self) -> usize {
+    fn byte_index(&self) -> usize {
         self.input
             .char_indices()
             .map(|(i, _)| i)
@@ -56,8 +62,7 @@ impl Ui {
     }
 
     fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.character_index != 0;
-        if is_not_cursor_leftmost {
+        if self.character_index != 0 {
             // Method "remove" is not used on the saved text for deleting the selected char.
             // Reason: Using remove on String works on bytes instead of the chars.
             // Using remove would require special care because of char boundaries.
@@ -77,21 +82,35 @@ impl Ui {
         }
     }
 
+    // Limit the character_index between 0 and inputfield characters number
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         new_cursor_pos.clamp(0, self.input.chars().count())
     }
 
-    fn reset_cursor(&mut self) {
+    fn reset_char_index(&mut self) {
         self.character_index = 0;
     }
 
     // Send the message to the LLM API when "enter" pressed
     fn submit_message(&mut self) {
-        self.input_mode = InputMode::Normal;
-        self.app.send_message(self.input.clone());
-        self.input.clear();
-        self.reset_cursor();
+        if self.input.len() > 0 {
+            self.input_mode = InputMode::Normal;
+            self.app.send_message(self.input.clone());
+            self.input.clear();
+            self.reset_char_index();
+        }
+    }
 
+    // Get the max chars allowed per line (not trustable while a line is not completed)
+    fn get_max_chars_per_line(&self, area_width: u16) -> usize {
+        let available_width = area_width.saturating_sub(2); // Retirer les bordures
+        self.input.chars().take(available_width as usize).count()
+    }
+
+    // Get the number of line needed for the inputfield text
+    fn get_nb_line(&self, area_width: u16) -> usize {
+        let available_width = area_width.saturating_sub(2); // Retirer les bordures
+        (self.input.chars().count() as f64 / available_width as f64).ceil() as usize
     }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
@@ -104,9 +123,7 @@ impl Ui {
                         KeyCode::Char('e') => {
                             self.input_mode = InputMode::Editing;
                         }
-                        KeyCode::Char('q') => {
-                            return Ok(())
-                        }
+                        KeyCode::Char('q') => return Ok(()),
                         _ => {}
                     },
                     InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
@@ -116,6 +133,19 @@ impl Ui {
                         KeyCode::Left => self.move_cursor_left(),
                         KeyCode::Right => self.move_cursor_right(),
                         KeyCode::Esc => self.input_mode = InputMode::Normal,
+                        KeyCode::Up => {
+                            if self.scroll_offset_messages > 0 {
+                                self.scroll_offset_messages -= 1;
+                            }
+                        }
+                        KeyCode::Down => {
+                            // TODO: WTF
+                            let message_count = self.app.messages.len();
+                            if self.scroll_offset_messages < message_count.saturating_sub(1) {
+                                self.scroll_offset_messages += 1;
+                            }
+                        }
+
                         _ => {}
                     },
                     InputMode::Editing => {}
@@ -127,8 +157,8 @@ impl Ui {
     fn draw(&self, frame: &mut Frame) {
         let vertical = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Min(1),
-            Constraint::Length(3),
+            Constraint::Min(10),
+            Constraint::Length(5),
         ]);
         let [help_area, messages_area, input_area] = vertical.areas(frame.area());
 
@@ -149,7 +179,7 @@ impl Ui {
                     "Esc".bold(),
                     " to stop editing, ".into(),
                     "Enter".bold(),
-                    " to record the message".into(),
+                    " to send the message to Néo AI".into(),
                 ],
                 Style::default(),
             ),
@@ -163,8 +193,24 @@ impl Ui {
                 InputMode::Normal => Style::default(),
                 InputMode::Editing => Style::default().fg(Color::Yellow),
             })
-            .block(Block::bordered().title("Input"));
+            .block(Block::bordered().title("Input"))
+            .wrap(Wrap { trim: false });
         frame.render_widget(input, input_area);
+
+        let nb_line = self.get_nb_line(input_area.width);
+        let max_char = self.get_max_chars_per_line(input_area.width);
+
+        let cursor_y = if nb_line > 1 {
+            (self.character_index / max_char) + 1
+        } else {
+            1
+        };
+        let cursor_x = if nb_line > 1 {
+            self.character_index % max_char
+        } else {
+            self.character_index
+        };
+
         match self.input_mode {
             // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
             InputMode::Normal => {}
@@ -175,21 +221,35 @@ impl Ui {
             InputMode::Editing => frame.set_cursor_position(Position::new(
                 // Draw the cursor at the current position in the input field.
                 // This position is can be controlled via the left and right arrow key
-                input_area.x + self.character_index as u16 + 1,
-                // Move one line down, from the border to the input line
-                input_area.y + 1,
+                input_area.x + cursor_x as u16 + 1,
+                input_area.y + cursor_y as u16,
             )),
         }
+        let mut scrollbar_state_input = ScrollbarState::new(self.get_nb_line(input_area.width))
+            .position(self.scroll_offset_input);
+        let scrollbar_input = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+        frame.render_stateful_widget(scrollbar_input, input_area, &mut scrollbar_state_input);
 
-        let messages: Vec<ListItem> = self.app.messages
+        let messages: Vec<ListItem> = self
+            .app
+            .messages
             .iter()
-            .enumerate()
-            .map(|(i, m)| {
-                let content = Line::from(Span::raw(format!("{i}: {m}")));
+            .map(|m| {
+                let content = Line::from(Span::raw(format!("{m}")));
                 ListItem::new(content)
             })
             .collect();
-        let messages = List::new(messages).block(Block::bordered().title("Messages"));
+        let messages = List::new(messages).block(Block::bordered().title("Chat with Néo AI"));
         frame.render_widget(messages, messages_area);
+
+        let message_count = self.app.messages.len();
+        let mut scrollbar_state_messages =
+            ScrollbarState::new(message_count).position(self.scroll_offset_messages);
+        let scrollbar_messages = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+        frame.render_stateful_widget(
+            scrollbar_messages,
+            messages_area,
+            &mut scrollbar_state_messages,
+        );
     }
 }
