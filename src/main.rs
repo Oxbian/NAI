@@ -1,16 +1,15 @@
-use crate::{app::App, ui::Ui};
-use color_eyre::Result;
-use ratatui;
-//use reqwest;
 mod app;
 mod ui;
+use crate::{app::init::App, ui::init::Ui};
+use color_eyre::Result;
+use ratatui;
 
 fn main() -> Result<()> {
     // Setup terminal
-    let mut terminal = ratatui::init();
+    let terminal = ratatui::init();
 
     // Run the app
-    let mut app = App::new();
+    let app = App::new();
     let res = Ui::new(app).run(terminal);
 
     // Clean
