@@ -5,10 +5,8 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Constraint, Layout, Position},
     style::{Color, Style, Stylize},
-    text::{Line, Span, Text},
-    widgets::{
-        Block, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
-    },
+    text::{Line, Text},
+    widgets::{Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
     DefaultTerminal, Frame,
 };
 
@@ -37,9 +35,24 @@ impl Ui {
         }
     }
 
-    fn move_messages_up(&mut self) {}
+    fn move_messages_up(&mut self) {
+        if self.message_box_data.nb_line > self.message_box_data.max_line
+            && self.message_box_data.scroll_offset > 0
+        {
+            self.message_box_data.scroll_offset -= 1;
+        }
+    }
 
-    fn move_messages_down(&mut self) {}
+    fn move_messages_down(&mut self) {
+        if self
+            .message_box_data
+            .nb_line
+            .saturating_sub(self.message_box_data.scroll_offset)
+            > self.message_box_data.max_line
+        {
+            self.message_box_data.scroll_offset += 1;
+        }
+    }
 
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         loop {
@@ -52,6 +65,8 @@ impl Ui {
                             self.input_field.input_mode = InputMode::Editing;
                         }
                         KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Up => self.move_messages_up(),
+                        KeyCode::Down => self.move_messages_down(),
                         _ => {}
                     },
                     InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
@@ -63,29 +78,12 @@ impl Ui {
                         KeyCode::Up => self.input_field.move_cursor_up(),
                         KeyCode::Down => self.input_field.move_cursor_down(),
                         KeyCode::Esc => self.input_field.input_mode = InputMode::Normal,
-                        KeyCode::PageUp => self.move_messages_up(),
-                        KeyCode::PageDown => self.move_messages_down(),
                         _ => {}
                     },
                     InputMode::Editing => {}
                 }
             }
         }
-    }
-
-    fn wrap_text(&self, text: String, max_width: usize) -> (Vec<Line<'_>>, usize) {
-        let mut count = 0; // number of line used
-        (
-            text.chars()
-                .collect::<Vec<_>>()
-                .chunks(max_width)
-                .map(|chunk| {
-                    count += 1;
-                    Line::from(Span::raw(chunk.iter().collect::<String>()))
-                })
-                .collect(),
-            count,
-        )
     }
 
     fn draw(&mut self, frame: &mut Frame) {
@@ -159,29 +157,32 @@ impl Ui {
         frame.render_stateful_widget(scrollbar_input, input_area, &mut scrollbar_state_input);
 
         let available_width_message = messages_area.width.saturating_sub(2);
-        let mut messages: Vec<ListItem> = Vec::new();
+        let mut messages = Vec::new();
         let mut max_char_per_line = self.message_box_data.max_char_per_line;
-        let mut msg_nb_line = 0;
+        let mut msg_nb_line: usize = 0;
 
         for m in &self.app.messages {
             let msg = format!("{}", m);
             let size = msg.chars().take(available_width_message as usize).count();
+            let msg_lines = (msg.chars().count() as f64 / size as f64).ceil();
+            msg_nb_line = msg_nb_line.saturating_add(msg_lines as usize);
 
-            let (content, count) = self.wrap_text(msg.clone(), max_char_per_line);
-            msg_nb_line = count;
-            messages.push(ListItem::new(content.clone()));
+            messages.push(Line::from(msg.clone()));
             if size > max_char_per_line {
                 max_char_per_line = size;
             }
         }
-
-        let messages = List::new(messages).block(Block::bordered().title("Chat with Néo AI"));
+        let messages = Paragraph::new(Text::from(messages))
+            .block(Block::bordered().title("Chat with Néo AI"))
+            .wrap(Wrap { trim: true })
+            .scroll((self.message_box_data.scroll_offset as u16, 0));
         frame.render_widget(messages, messages_area);
 
         self.message_box_data.max_char_per_line = max_char_per_line;
         self.message_box_data.nb_line = msg_nb_line;
+        self.message_box_data.max_line = messages_area.height.saturating_sub(2) as usize;
 
-        let mut scrollbar_state_message = ScrollbarState::new(self.app.messages.len())
+        let mut scrollbar_state_message = ScrollbarState::new(self.message_box_data.nb_line)
             .position(self.message_box_data.scroll_offset);
         let scrollbar_message = Scrollbar::new(ScrollbarOrientation::VerticalRight);
         frame.render_stateful_widget(

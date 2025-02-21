@@ -150,11 +150,10 @@ impl InputField {
             if y > self.input_data.max_line {
                 self.input_data.scroll_offset = y - self.input_data.max_line;
                 y -= self.input_data.scroll_offset;
-            }
-
-            if y < self.input_data.scroll_offset {
+            } else if y < self.input_data.scroll_offset {
                 self.input_data.scroll_offset = y;
             }
+
             return y.max(1);
         } else {
             return 1;

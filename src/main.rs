@@ -1,4 +1,5 @@
 mod app;
+mod helper;
 mod ui;
 use crate::{app::init::App, ui::init::Ui};
 use color_eyre::Result;

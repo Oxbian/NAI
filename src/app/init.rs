@@ -1,3 +1,4 @@
+use crate::helper::init::print_in_file;
 use color_eyre::Result;
 use reqwest;
 use serde_json::Value;
@@ -48,7 +49,7 @@ impl App {
             .post("http://localhost:8080/completion")
             .json(&serde_json::json!({
                 "prompt": &content,
-                "n_predict": 128,
+                "n_predict": 400,
             }))
             .send()?;
 
@@ -56,6 +57,7 @@ impl App {
             // Désérialiser la réponse JSON
             let json_response: Value = response.json()?;
 
+            //print_in_file(json_response.to_string().clone());
             // Accéder à la partie spécifique du JSON
             if let Some(msg) = json_response["content"].as_str() {
                 self.messages.push(Message {
