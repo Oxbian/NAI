@@ -37,6 +37,10 @@ impl Ui {
         }
     }
 
+    fn move_messages_up(&mut self) {}
+
+    fn move_messages_down(&mut self) {}
+
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         loop {
             terminal.draw(|frame| self.draw(frame))?;
@@ -59,6 +63,8 @@ impl Ui {
                         KeyCode::Up => self.input_field.move_cursor_up(),
                         KeyCode::Down => self.input_field.move_cursor_down(),
                         KeyCode::Esc => self.input_field.input_mode = InputMode::Normal,
+                        KeyCode::PageUp => self.move_messages_up(),
+                        KeyCode::PageDown => self.move_messages_down(),
                         _ => {}
                     },
                     InputMode::Editing => {}
@@ -67,12 +73,19 @@ impl Ui {
         }
     }
 
-    fn wrap_text(&self, text: String, max_width: usize) -> Vec<Line<'_>> {
-        text.chars()
-            .collect::<Vec<_>>()
-            .chunks(max_width)
-            .map(|chunk| Line::from(Span::raw(chunk.iter().collect::<String>())))
-            .collect()
+    fn wrap_text(&self, text: String, max_width: usize) -> (Vec<Line<'_>>, usize) {
+        let mut count = 0; // number of line used
+        (
+            text.chars()
+                .collect::<Vec<_>>()
+                .chunks(max_width)
+                .map(|chunk| {
+                    count += 1;
+                    Line::from(Span::raw(chunk.iter().collect::<String>()))
+                })
+                .collect(),
+            count,
+        )
     }
 
     fn draw(&mut self, frame: &mut Frame) {
@@ -146,26 +159,35 @@ impl Ui {
         frame.render_stateful_widget(scrollbar_input, input_area, &mut scrollbar_state_input);
 
         let available_width_message = messages_area.width.saturating_sub(2);
+        let mut messages: Vec<ListItem> = Vec::new();
+        let mut max_char_per_line = self.message_box_data.max_char_per_line;
+        let mut msg_nb_line = 0;
+
         for m in &self.app.messages {
             let msg = format!("{}", m);
             let size = msg.chars().take(available_width_message as usize).count();
 
-            if size > self.message_box_data.max_char_per_line {
-                self.message_box_data.max_char_per_line = size;
+            let (content, count) = self.wrap_text(msg.clone(), max_char_per_line);
+            msg_nb_line = count;
+            messages.push(ListItem::new(content.clone()));
+            if size > max_char_per_line {
+                max_char_per_line = size;
             }
         }
 
-        let messages: Vec<ListItem> = self
-            .app
-            .messages
-            .iter()
-            .map(|m| {
-                let content =
-                    self.wrap_text(format!("{}", m), self.message_box_data.max_char_per_line);
-                ListItem::new(content)
-            })
-            .collect();
         let messages = List::new(messages).block(Block::bordered().title("Chat with Néo AI"));
         frame.render_widget(messages, messages_area);
+
+        self.message_box_data.max_char_per_line = max_char_per_line;
+        self.message_box_data.nb_line = msg_nb_line;
+
+        let mut scrollbar_state_message = ScrollbarState::new(self.app.messages.len())
+            .position(self.message_box_data.scroll_offset);
+        let scrollbar_message = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+        frame.render_stateful_widget(
+            scrollbar_message,
+            messages_area,
+            &mut scrollbar_state_message,
+        );
     }
 }
