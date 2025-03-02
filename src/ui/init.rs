@@ -67,6 +67,7 @@ impl Ui {
                         KeyCode::Char('q') => return Ok(()),
                         KeyCode::Up => self.move_messages_up(),
                         KeyCode::Down => self.move_messages_down(),
+                        KeyCode::Char('s') => self.app.resume_conv(),
                         _ => {}
                     },
                     InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
@@ -162,19 +163,19 @@ impl Ui {
         let mut msg_nb_line: usize = 0;
 
         for m in &self.app.messages {
-            let msg = format!("{}", m);
+            let msg: String = m.to_string();
             let size = msg.chars().take(available_width_message as usize).count();
             let msg_lines = (msg.chars().count() as f64 / size as f64).ceil();
             msg_nb_line = msg_nb_line.saturating_add(msg_lines as usize);
 
-            messages.push(Line::from(msg.clone()));
+            messages.push(Line::from(msg));
             if size > max_char_per_line {
                 max_char_per_line = size;
             }
         }
         let messages = Paragraph::new(Text::from(messages))
             .block(Block::bordered().title("Chat with Néo AI"))
-            .wrap(Wrap { trim: true })
+            .wrap(Wrap { trim: false })
             .scroll((self.message_box_data.scroll_offset as u16, 0));
         frame.render_widget(messages, messages_area);
 

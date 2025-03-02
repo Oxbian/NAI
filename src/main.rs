@@ -4,6 +4,7 @@ mod ui;
 use crate::{app::init::App, ui::init::Ui};
 use color_eyre::Result;
 use ratatui;
+use tokio;
 
 fn main() -> Result<()> {
     // Setup terminal
