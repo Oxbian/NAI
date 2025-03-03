@@ -1,7 +1,7 @@
 use crate::app::llm::{Message, MessageType, LLM};
 use crate::helper::init::warn;
 use uuid::Uuid;
-use tokio;
+use tokio::runtime::Builder;
 
 pub struct App {
     pub messages: Vec<Message>, // History of recorded message
@@ -30,14 +30,16 @@ impl App {
         self.messages.push(message);
     }
 
-    pub fn send_message(&mut self, content: String) {
-        self.append_message(content, MessageType::USER);
-
-        let runtime = tokio::runtime::Builder::new_current_thread()
+    fn ask(&mut self, mode: &str) {
+        let runtime = Builder::new_current_thread()
             .enable_all()
             .build().unwrap();
         let result = runtime.block_on(async {
-            self.chat_llm.ask(&self.messages).await
+            if mode == "resume" {
+                self.resume_llm.ask(&self.messages).await
+            } else {
+                self.chat_llm.ask(&self.messages).await
+            }
         });
 
         match result {
@@ -46,20 +48,13 @@ impl App {
         }
     }
 
+    pub fn send_message(&mut self, content: String) {
+        self.append_message(content, MessageType::USER);
+        self.ask("chat");
+    }
+
     pub fn resume_conv(&mut self) {
         self.append_message(self.resume_llm.system_prompt.to_string(), MessageType::USER);
-
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build().unwrap();
-        
-        let result = runtime.block_on(async {
-            self.resume_llm.ask(&self.messages).await
-        });
-
-        match result {
-            Ok(msg) => self.append_message(msg, MessageType::ASSISTANT),
-            Err(e) => self.append_message(e.to_string(), MessageType::ASSISTANT),
-        }
+        self.ask("resume"); 
     }
 }

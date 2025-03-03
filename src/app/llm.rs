@@ -3,7 +3,7 @@ use reqwest::{header::CONTENT_TYPE, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
-use std::fs::{OpenOptions, create_dir_all};
+use std::fs::{self, OpenOptions, create_dir_all};
 use std::io::Write;
 
 #[derive(Deserialize, Debug)]

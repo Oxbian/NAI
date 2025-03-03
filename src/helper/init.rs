@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use std::fs::OpenOptions;
-use std::io::{self, Write};
+use std::io::Write;
 
 pub fn warn(content: String) {
     let mut file = OpenOptions::new()

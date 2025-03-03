@@ -11,7 +11,7 @@ be added to this AI.
 
 This project is written in Rust, so you will need `rustc` and `cargo`.  
 Moreover, you will need a LLM API, currently only works with local 
-[llama.cpp](https://github.com/ggml-org/llama.cpp) API. 
+[ollama](https://github.com/ollama/ollama) API. 
   
 ### Building & Running
 
@@ -30,6 +30,12 @@ and there you go !
 ## Screenshots
 
 ![Screenshot of the ui](screenshots/ui.png)
+
+## Feature
+
+- Conversation are saved inside files in JSON in this folder `conv/`, and can be reused on others LLM.
+- In normal mode, conversation can be resumed by the LLM into bullet point list.
+- LLM can be configured thanks to configuration files in `config/`
 
 ## TODO
 
