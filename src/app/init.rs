@@ -1,9 +1,11 @@
 use crate::app::llm::{Message, MessageType, LLM};
-use crate::helper::init::print_in_file;
+use crate::helper::init::warn;
+use uuid::Uuid;
 use tokio;
 
 pub struct App {
     pub messages: Vec<Message>, // History of recorded message
+    conv_id: Uuid,
     chat_llm: LLM,
     resume_llm: LLM,
 }
@@ -16,6 +18,7 @@ impl App {
                 MessageType::SYSTEM,
                 chat_llm.system_prompt.clone(),
             )],
+            conv_id: Uuid::new_v4(),
             chat_llm,
             resume_llm: LLM::new("config/resume-LLM.json".to_string()).unwrap(),
         }
@@ -23,6 +26,7 @@ impl App {
 
     fn append_message(&mut self, msg: String, role: MessageType) {
         let message = Message::new(role, msg);
+        message.save_message(self.conv_id.to_string());
         self.messages.push(message);
     }
 

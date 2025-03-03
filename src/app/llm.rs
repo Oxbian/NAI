@@ -1,9 +1,10 @@
-use crate::helper::init::print_in_file;
+use crate::helper::init::warn;
 use reqwest::{header::CONTENT_TYPE, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
-use std::fs;
+use std::fs::{OpenOptions, create_dir_all};
+use std::io::Write;
 
 #[derive(Deserialize, Debug)]
 pub struct LLM {
@@ -40,7 +41,7 @@ impl LLM {
                 while let Some(chunk) = res.chunk().await? {
                     let answer: Value = serde_json::from_slice(chunk.as_ref())?;
 
-                    print_in_file(answer.to_string());
+                    warn(answer.to_string());
                     if answer["done"].as_bool().unwrap_or(false) {
                         break;
                     }
@@ -53,7 +54,7 @@ impl LLM {
             Err(e) => return Err(Box::new(e)),
         }
     
-        print_in_file(full_message.clone());
+        warn(full_message.clone());
         Ok(full_message)
     }
 }
@@ -84,6 +85,21 @@ pub struct Message {
 impl Message {
     pub fn new(role: MessageType, content: String) -> Message {
         Message { role, content }
+    }
+
+    pub fn save_message(&self, conv_id: String) {
+        // Create conv directory if doesn't exist
+        create_dir_all("conv").unwrap();
+
+        // Save message
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .create(true)
+            .open("conv/".to_string() + &conv_id)
+            .unwrap();
+
+        writeln!(file, "{}", serde_json::to_string(self).unwrap()).unwrap();
     }
 }
 
