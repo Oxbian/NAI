@@ -11,6 +11,7 @@ pub struct LLM {
     url: String,
     model: String,
     pub system_prompt: String,
+    pub tools: serde_json::Value,
 }
 
 impl LLM {
@@ -27,9 +28,9 @@ impl LLM {
             .post(&self.url)
             .header(CONTENT_TYPE, "application/json")
             .json(&serde_json::json!({
-               "model": self.model,
-               "messages": messages,
-               "stream": true}))
+                "model": self.model,
+                "messages": messages,
+                "stream": true}))
             .send()
             .await?;
 
@@ -56,6 +57,34 @@ impl LLM {
     
         warn(full_message.clone());
         Ok(full_message)
+    }
+
+    // Use tools functionnality of Ollama, only some models supports it:
+    // https://ollama.com/search?c=tools
+    pub async fn ask_format(&self, messages: &Vec<Message>) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let client = Client::new();
+        let response = client
+            .post(&self.url)
+            .header(CONTENT_TYPE, "application/json")
+            .json(&serde_json::json!({
+                "model": self.model,
+                "messages": messages,
+                "stream": false,
+                "tools": self.tools}))
+            .send()
+            .await?.json::<Value>().await?;
+
+        warn(response.to_string());
+
+        if let Some(tool_calls) = response
+            .get("message")
+                .and_then(|msg| msg.get("tool_calls"))
+                .cloned()
+        {
+            Ok(tool_calls)
+        } else {
+            Err("tool_calls not found".into())
+        }
     }
 }
 

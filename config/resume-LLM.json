@@ -1,5 +1,6 @@
 {
 	"url": "http://127.0.0.1:11434/api/chat",
 	"model": "llama3.2",
-	"system_prompt": "Please summarize the most important points of this conversation in bullet points, focusing on key information, questions raised, and answers provided."
+	"system_prompt": "Please summarize the most important points of this conversation in bullet points, focusing on key information, questions raised, and answers provided.",
+	"tools": {}
 }

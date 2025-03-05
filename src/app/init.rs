@@ -30,10 +30,24 @@ impl App {
         self.messages.push(message);
     }
 
+    fn categorize_ask(&mut self) {
+        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
+
+        let result = runtime.block_on(async {
+            // Ask the LLM to categorise the request between (chat, code, wikipedia)
+            self.chat_llm.ask_format(&self.messages).await
+        });
+
+        let categorie = result.unwrap()[0]["function"]["arguments"]["category"].clone();
+
+        self.ask(categorie.to_string().as_str());
+    }
+
     fn ask(&mut self, mode: &str) {
         let runtime = Builder::new_current_thread()
             .enable_all()
             .build().unwrap();
+
         let result = runtime.block_on(async {
             if mode == "resume" {
                 self.resume_llm.ask(&self.messages).await
@@ -43,14 +57,14 @@ impl App {
         });
 
         match result {
-            Ok(msg) => self.append_message(msg, MessageType::ASSISTANT),
+            Ok(msg) => self.append_message(msg.to_string(), MessageType::ASSISTANT),
             Err(e) => self.append_message(e.to_string(), MessageType::ASSISTANT),
         }
     }
 
     pub fn send_message(&mut self, content: String) {
         self.append_message(content, MessageType::USER);
-        self.ask("chat");
+        self.categorize_ask();
     }
 
     pub fn resume_conv(&mut self) {
