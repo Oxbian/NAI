@@ -162,17 +162,27 @@ impl Ui {
 
         // Render message list
         let available_width_message = messages_area.width.saturating_sub(2);
-        let mut messages = Vec::new();
+        let mut messages: Text = Text::default();
         let mut max_char_per_line = self.message_box_data.max_char_per_line;
         let mut msg_nb_line: usize = 0;
 
         for m in &self.app.messages {
             let msg: String = m.to_string();
             let size = msg.chars().take(available_width_message as usize).count();
-            let msg_lines = (msg.chars().count() as f64 / size as f64).ceil();
-            msg_nb_line = msg_nb_line.saturating_add(msg_lines as usize);
 
-            messages.push(Line::from(msg));
+            let text = Text::from(msg);
+            for line in text {
+                messages.push_line(line.clone());
+                let line_count =
+                    (line.to_string().chars().count() as f64 / size as f64).ceil() as usize;
+
+                if line_count > 0 {
+                    msg_nb_line += line_count;
+                } else {
+                    msg_nb_line += 1;
+                }
+            }
+
             if size > max_char_per_line {
                 max_char_per_line = size;
             }
