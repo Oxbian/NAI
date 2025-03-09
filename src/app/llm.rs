@@ -15,11 +15,9 @@ pub struct LLM {
 }
 
 impl LLM {
-    pub fn new(config_file: String) -> Result<LLM, Box<dyn std::error::Error>> {
-        let contents = fs::read_to_string(config_file)?;
-        let llm: LLM = serde_json::from_str(&contents)?;
-
-        Ok(llm)
+    pub fn new(config_file: String) -> LLM {
+        let contents = fs::read_to_string(config_file).unwrap();
+        serde_json::from_str(&contents).unwrap()
     }
 
     pub async fn ask(&self, messages: &Vec<Message>) -> Result<String, Box<dyn std::error::Error>> {
@@ -116,9 +114,9 @@ impl Message {
         Message { role, content }
     }
 
-    pub fn save_message(&self, conv_id: String) {
+    pub fn save_message(&self, conv_id: String) -> Result<(), Box<dyn std::error::Error>> {
         // Create conv directory if doesn't exist
-        create_dir_all("conv").unwrap();
+        create_dir_all("conv")?;
 
         // Save message
         let mut file = OpenOptions::new()
@@ -128,7 +126,9 @@ impl Message {
             .open("conv/".to_string() + &conv_id)
             .unwrap();
 
-        writeln!(file, "{}", serde_json::to_string(self).unwrap()).unwrap();
+        writeln!(file, "{}", serde_json::to_string(self)?)?;
+
+        Ok(())
     }
 }
 

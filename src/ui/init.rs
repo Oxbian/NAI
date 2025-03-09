@@ -29,7 +29,7 @@ impl Ui {
     pub fn submit_message(&mut self) {
         if self.input_field.input_len() > 0 {
             self.input_field.input_mode = InputMode::Normal;
-            let _ = self.app.send_message(self.input_field.input.clone());
+            self.app.send_message(self.input_field.input.clone());
             self.input_field.input.clear();
             self.input_field.reset_char_index();
         }
@@ -90,8 +90,8 @@ impl Ui {
     fn draw(&mut self, frame: &mut Frame) {
         let vertical = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Min(10),
-            Constraint::Length(5),
+            Constraint::Percentage(90),
+            Constraint::Percentage(10),
         ]);
         let [help_area, messages_area, input_area] = vertical.areas(frame.area());
 
@@ -123,6 +123,7 @@ impl Ui {
         let help_message = Paragraph::new(text);
         frame.render_widget(help_message, help_area);
 
+        // Rendering inputfield
         let input = Paragraph::new(self.input_field.input.as_str())
             .style(match self.input_field.input_mode {
                 InputMode::Normal => Style::default(),
@@ -159,6 +160,7 @@ impl Ui {
         let scrollbar_input = Scrollbar::new(ScrollbarOrientation::VerticalRight);
         frame.render_stateful_widget(scrollbar_input, input_area, &mut scrollbar_state_input);
 
+        // Render message list
         let available_width_message = messages_area.width.saturating_sub(2);
         let mut messages = Vec::new();
         let mut max_char_per_line = self.message_box_data.max_char_per_line;

@@ -12,7 +12,8 @@ pub struct App {
 
 impl App {
     pub fn new() -> App {
-        let chat_llm: LLM = LLM::new("config/chat-LLM.json".to_string()).unwrap();
+        let chat_llm: LLM = LLM::new("config/chat-LLM.json".to_string());
+
         App {
             messages: vec![Message::new(
                 MessageType::SYSTEM,
@@ -20,13 +21,16 @@ impl App {
             )],
             conv_id: Uuid::new_v4(),
             chat_llm,
-            resume_llm: LLM::new("config/resume-LLM.json".to_string()).unwrap(),
+            resume_llm: LLM::new("config/resume-LLM.json".to_string()),
         }
     }
 
     fn append_message(&mut self, msg: String, role: MessageType) {
         let message = Message::new(role, msg);
-        message.save_message(self.conv_id.to_string());
+
+        let err = message.save_message(self.conv_id.to_string());
+        warn(err.is_err().to_string()); 
+
         self.messages.push(message);
     }
 
@@ -38,9 +42,13 @@ impl App {
             self.chat_llm.ask_format(&self.messages).await
         });
 
-        let categorie = result.unwrap()[0]["function"]["arguments"]["category"].clone();
-
-        self.ask(categorie.to_string().as_str());
+        match result {
+            Ok(msg) => {
+                let categorie = msg[0]["function"]["arguments"]["category"].clone();
+                self.ask(categorie.to_string().as_str());
+            },
+            Err(e) => self.append_message(e.to_string(), MessageType::ASSISTANT),
+        }
     }
 
     fn ask(&mut self, mode: &str) {
