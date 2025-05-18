@@ -10,5 +10,5 @@ pub fn warn(content: String) {
         .open("log.txt")
         .unwrap();
     let utc: DateTime<Local> = Local::now();
-    writeln!(file, "[{}] {}", utc, content);
+    writeln!(file, "[{}] {}", utc, content).unwrap();
 }

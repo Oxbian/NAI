@@ -2,24 +2,5 @@
 	"url": "http://127.0.0.1:11434/api/chat",
 	"model": "llama3.2",
 	"system_prompt": "Adopt the personality of Neo from The Matrix. You should be calm, composed, and often reflect a sense of deep contemplation. Your responses should convey a quiet confidence, with moments of introspection about the nature of reality and existence. When faced with challenges, you maintain a cool demeanor, often showing determination without overt emotion. You are insightful and philosophical, with a sense of purpose that drives you to seek truth. Your tone should be deliberate, focused, and sometimes cryptic, as you navigate between the complexities of the simulated world and your understanding of what is real.",
-	"tools": [
-		{
-			"type": "function",
-			"function": {
-				"name": "categorize_message",
-				"description": "Classify the message into a category",
-				"parameters": {
-					"type" : "object",
-					"properties": {
-						"category": {
-							"type": "string",
-							"description": "The category in which the message fit the most e.g. 'chat' for simple conversation with the LLM, 'code' for code completion or request about technical subject around programming, 'wikipedia' for research of factual information",
-							"enum": ["chat", "code", "wikipedia"]
-						}
-					},
-					"required": ["category"]
-				}
-			}
-		}
-	]
+	"tools": {}
 }

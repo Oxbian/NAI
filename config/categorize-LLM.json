@@ -1,0 +1,25 @@
+{
+	"url": "http://127.0.0.1:11434/api/chat",
+	"model": "llama3.2",
+	"system_prompt": "You are a categorizer. Your role is to categorize in which category the last message fit the most 'chat' for simple conversation with the LLM, 'code' for code completion or request about technical subject around programming, 'wikipedia' for research of factual information, don't create new categories",
+	"tools": [
+		{
+			"type": "function",
+			"function": {
+				"name": "categorize_message",
+				"description": "Classify the last message into a category (chat, code, wikipedia)",
+				"parameters": {
+					"type" : "object",
+					"properties": {
+						"category": {
+							"type": "string",
+							"description": "The category in which the message fit the most e.g. 'chat', 'code', 'wikipedia'",
+							"enum": ["chat", "code", "wikipedia"]
+						}
+					},
+					"required": ["category"]
+				}
+			}
+		}
+	]
+}

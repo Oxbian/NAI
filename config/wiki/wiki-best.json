@@ -1,0 +1,6 @@
+{
+	"url": "http://127.0.0.1:11434/api/chat",
+	"model": "llama3.2",
+	"system_prompt": "You are a research assistant. Your task is to select the most relevant heading from the list provided based on the user's query. Ensure the heading is in the list; avoid outputting headings that are not in the list.",
+	"tools": {}
+}

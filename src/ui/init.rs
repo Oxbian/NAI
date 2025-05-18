@@ -95,6 +95,10 @@ impl Ui {
         ]);
         let [help_area, messages_area, input_area] = vertical.areas(frame.area());
 
+        let help_horizontal =
+            Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)]);
+        let [help_text_area, conv_id_area] = help_horizontal.areas(help_area);
+
         let (msg, style) = match self.input_field.input_mode {
             InputMode::Normal => (
                 vec![
@@ -103,8 +107,8 @@ impl Ui {
                     " to exit, ".into(),
                     "e".bold(),
                     " to start editing, ".into(),
-                    "r".bold(),
-                    " to resume the conversation.".into(),
+                    "s".bold(),
+                    " to save a resume of the conversation.".into(),
                 ],
                 Style::default(),
             ),
@@ -119,9 +123,13 @@ impl Ui {
                 Style::default(),
             ),
         };
-        let text = Text::from(Line::from(msg)).patch_style(style);
-        let help_message = Paragraph::new(text);
-        frame.render_widget(help_message, help_area);
+        let help_text = Text::from(Line::from(msg)).patch_style(style);
+        let help_message = Paragraph::new(help_text);
+        frame.render_widget(help_message, help_text_area);
+
+        let conv_id = self.app.conv_id.to_string().clone();
+        let conv_id_text = Paragraph::new(format!("Conv id: {conv_id}"));
+        frame.render_widget(conv_id_text, conv_id_area);
 
         // Rendering inputfield
         let input = Paragraph::new(self.input_field.input.as_str())
@@ -187,6 +195,7 @@ impl Ui {
                 max_char_per_line = size;
             }
         }
+
         let messages = Paragraph::new(Text::from(messages))
             .block(Block::bordered().title("Chat with Néo AI"))
             .wrap(Wrap { trim: false })

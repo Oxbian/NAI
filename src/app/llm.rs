@@ -15,7 +15,7 @@ pub struct LLM {
 }
 
 impl LLM {
-    pub fn new(config_file: String) -> LLM {
+    pub fn new(config_file: &str) -> LLM {
         let contents = fs::read_to_string(config_file).unwrap();
         serde_json::from_str(&contents).unwrap()
     }
@@ -40,7 +40,7 @@ impl LLM {
                 while let Some(chunk) = res.chunk().await? {
                     let answer: Value = serde_json::from_slice(chunk.as_ref())?;
 
-                    warn(answer.to_string());
+                    //warn(answer.to_string());
                     if answer["done"].as_bool().unwrap_or(false) {
                         break;
                     }
@@ -59,7 +59,7 @@ impl LLM {
 
     // Use tools functionnality of Ollama, only some models supports it:
     // https://ollama.com/search?c=tools
-    pub async fn ask_format(&self, messages: &Vec<Message>) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    pub async fn ask_tools(&self, messages: &Vec<Message>) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         let client = Client::new();
         let response = client
             .post(&self.url)
@@ -72,7 +72,7 @@ impl LLM {
             .send()
             .await?.json::<Value>().await?;
 
-        warn(response.to_string());
+        //warn(response.to_string());
 
         if let Some(tool_calls) = response
             .get("message")
@@ -105,13 +105,20 @@ impl fmt::Display for MessageType {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Message {
-    role: MessageType,
-    content: String,
+    pub role: MessageType,
+    pub content: String,
 }
 
 impl Message {
     pub fn new(role: MessageType, content: String) -> Message {
         Message { role, content }
+    }
+
+    pub fn default() -> Message {
+        Message {
+            role: MessageType::USER,
+            content: "".to_string(),
+        }
     }
 
     pub fn save_message(&self, conv_id: String) -> Result<(), Box<dyn std::error::Error>> {
