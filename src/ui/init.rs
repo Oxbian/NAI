@@ -1,4 +1,5 @@
 use crate::app::init::App;
+use crate::app::llm::MessageType;
 use crate::ui::inputfield::{BoxData, InputField, InputMode};
 use color_eyre::Result;
 use ratatui::{
@@ -179,7 +180,19 @@ impl Ui {
             let size = msg.chars().take(available_width_message as usize).count();
 
             let text = Text::from(msg);
-            for line in text {
+            for mut line in text {
+                match m.role {
+                    MessageType::USER => {
+                        line.style = Style::default().fg(Color::Yellow);
+                    }
+                    MessageType::ASSISTANT => {
+                        line.style = Style::default().fg(Color::Cyan);
+                    }
+                    MessageType::SYSTEM => {
+                        line.style = Style::default().fg(Color::Red);
+                    }
+                }
+
                 messages.push_line(line.clone());
                 let line_count =
                     (line.to_string().chars().count() as f64 / size as f64).ceil() as usize;

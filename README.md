@@ -15,9 +15,10 @@ be added to this AI.
 ### Dependencies
 
 This project is written in Rust, so you will need `rustc` and `cargo`.  
-Moreover, you will need a LLM API, currently only works with local 
-[ollama](https://github.com/ollama/ollama) API. 
-  
+- A [ollama](https://github.com/ollama/ollama) API for LLM
+- A [kiwix server](https://kiwix.org/en/applications/) web server and API for getting data from a zim
+  file (wikipedia).
+
 ### Building & Running
 
 To build and run this project you will need to install all the dependencies used:
@@ -30,7 +31,18 @@ Once that is done, just
 ```bash
 cargo run
 ``` 
-and there you go !
+and there you go for the UI !
+  
+Ollama must be running, a model (like llama3.2) must be downloaded.
+Configuration files will probably need some modifications, so check everyone of
+them.  
+  
+For Wikipedia data, run a kiwix webserver on your zim file and modify the
+configuration in `wiki/wiki.json`.
+  
+```bash
+kiwix-serve -p 1025 -i 127.0.0.1 MYZIMFILE.zim
+```
 
 ## Screenshots
 
@@ -45,7 +57,6 @@ and there you go !
 
 ## TODO
 
-- Color change if it's an user or the LLM (dunno how to do it in this code base)
 - Connect & try LLM / tools
 
 ## Inspiration and reason

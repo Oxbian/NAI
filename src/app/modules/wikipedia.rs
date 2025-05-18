@@ -76,7 +76,7 @@ async fn find_get_best_article(articles: Vec<String>, user_query: &String, best_
 
     let messages = vec![
         Message::new(MessageType::SYSTEM, best_llm.system_prompt.clone()),
-        Message::new(MessageType::USER, format!("The user's query is: {}. Here are the headings:\n{}\n\nPlease select the most relevant heading. Output the heading **only** and nothing else.", user_query, articles_headings))];
+        Message::new(MessageType::USER, format!("The user's query is: {}. Here are the headings:\n{}\n\nPlease select the most relevant heading. Output the heading only and nothing else.", user_query, articles_headings))];
     let best_article = best_llm.ask(&messages).await?;
 
     // wiki query get article content & parse
@@ -98,9 +98,9 @@ fn extract_text_from_tags(html: &str) -> String {
             // Trouver le premier groupe capturé non vide (parmi cap[1] à cap[4])
             (1..=4)
                 .filter_map(|i| cap.get(i))
-                .map(|m| m.as_str()) // &str
+                .map(|m| m.as_str())
                 .flat_map(|s| s.split_whitespace())
-                .collect::<Vec<_>>() // Vec<&str>
+                .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>() // collect words
         .join(" "); // join with spaces
